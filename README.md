@@ -1,178 +1,293 @@
 # AI Lecture / Meeting Summarizer
 
-AI-powered web application for processing lectures, meetings, documents, audio/video files, and YouTube transcripts. It turns raw material into extracted text, cleaned notes, short reports, topics, key terms, searchable context, and downloadable reports.
+Проект принимает учебные материалы, лекции, встречи, документы, аудио/видео или YouTube-ссылки, извлекает текст, разбивает материал на сегменты, выделяет структуру, генерирует краткие и полные отчёты, поддерживает RAG-вопросы по материалу и экспортирует результаты в Markdown, PDF и DOCX.
 
-This is a portfolio MVP, not a production SaaS. It is intentionally built as a deterministic AI pipeline, not an autonomous agent.
+Это портфолио-MVP для демонстрации backend-пайплайна обработки материалов и простого web-интерфейса. Проект не является продакшен-сервисом и не реализует автономного агента: каждое действие запускается пользователем через API или Streamlit UI.
 
-## Features
+## Возможности
 
-- PDF, DOCX, TXT, and Markdown document processing
-- Audio/video transcription with timestamps using `faster-whisper`
-- YouTube transcript/subtitle processing without downloading video or audio
-- Short report generation
-- Full cleaned notes generation
-- Topics with source references
-- Key terms with definitions and source references
-- RAG question answering over uploaded material
-- Markdown, PDF, and DOCX export
-- FastAPI backend
-- Streamlit frontend
-- Docker and Docker Compose support
-- Pytest test suite with deterministic fallback modes
+- загрузка материалов: PDF, DOCX, TXT, MD, MP3, WAV, MP4, MOV;
+- добавление YouTube-лекции по ссылке;
+- обработка материала и извлечение текста;
+- разбиение текста на сегменты;
+- просмотр количества сегментов и символов;
+- выделение тем и источников/страниц;
+- выделение ключевых терминов;
+- построение RAG-индекса;
+- ответы на вопросы по загруженному материалу;
+- генерация краткого отчёта;
+- генерация полного очищенного конспекта;
+- экспорт отчётов в Markdown, PDF и DOCX;
+- FastAPI backend;
+- Streamlit web-интерфейс.
 
-## Tech Stack
+## Скриншоты интерфейса
+
+### Загрузка материала
+
+![Загрузка материала](docs/images/01_upload_material.png)
+
+### Обработка материала и извлечённый текст
+
+![Обработка материала](docs/images/02_processed_material.png)
+
+### RAG, отчёты и экспорт
+
+![RAG, отчёты и экспорт](docs/images/03_reports_rag_exports.png)
+
+## Архитектура проекта
+
+```text
+Пользователь → Streamlit UI → FastAPI Backend → Services → Storage/Outputs
+```
+
+- Streamlit отвечает за пользовательский интерфейс: загрузку файлов, добавление YouTube-ссылок, запуск обработки, просмотр результатов, вопросы к материалу и скачивание отчётов.
+- FastAPI отвечает за API и запуск backend-пайплайна: загрузку материалов, обработку, генерацию структуры, отчётов, RAG-индекса и экспортов.
+- Services отвечают за обработку файлов, извлечение текста, транскрибацию, отчёты, RAG и экспорт.
+- Результаты сохраняются в папках проекта: `data/uploads/`, `data/processed/`, `data/reports/`, `data/vector_db/`.
+
+Основной пайплайн:
+
+```text
+загрузка файла / YouTube URL
+-> определение типа источника
+-> извлечение текста или транскрипта
+-> сохранение segments.json и extracted_text.txt
+-> выделение тем и терминов
+-> генерация отчётов
+-> построение TF-IDF RAG-индекса
+-> ответы на вопросы по материалу
+-> экспорт Markdown / PDF / DOCX
+```
+
+Дополнительные материалы: [архитектура](docs/architecture.md), [обзор API](docs/api_overview.md), [демо-сценарий](docs/demo_scenario.md).
+
+## Стек технологий
 
 - Python
 - FastAPI
+- Uvicorn
 - Streamlit
-- faster-whisper
-- OpenRouter-compatible LLM API
-- scikit-learn TF-IDF retrieval
-- ReportLab
-- python-docx
-- pypdf
-- Docker
-- pytest
+- Pydantic и pydantic-settings
+- OpenAI SDK для LLM API, совместимого с OpenRouter
+- scikit-learn TF-IDF и cosine similarity для локального RAG/vector search
+- joblib для сохранения TF-IDF индекса
+- faster-whisper для speech-to-text по аудио
+- ffmpeg для извлечения аудиодорожки из видео
+- youtube-transcript-api для получения доступных YouTube-транскриптов
+- pypdf для извлечения текста из PDF
+- python-docx для чтения DOCX и экспорта DOCX
+- ReportLab для PDF-экспорта
+- Docker и Docker Compose
+- pytest, httpx
 
-## Architecture
+В проекте нет LangChain, ChromaDB и yt-dlp; текущий RAG реализован локально через TF-IDF.
 
-Pipeline summary:
+## Структура проекта
 
 ```text
-file upload / YouTube URL
--> source detection
--> text extraction or transcript extraction
--> segments.json + extracted_text.txt
--> reports, topics, terms
--> TF-IDF RAG index
--> grounded question answering
--> Markdown / PDF / DOCX export
+ai-lecture-meeting-summarizer/
+├── backend/
+│   └── app/
+│       ├── main.py
+│       ├── api/
+│       ├── services/
+│       ├── schemas/
+│       └── config.py
+├── frontend/
+│   └── app.py
+├── data/
+│   ├── uploads/
+│   ├── processed/
+│   ├── reports/
+│   └── vector_db/
+├── sample_data/
+├── scripts/
+├── tests/
+├── docs/
+│   ├── images/
+│   ├── api_overview.md
+│   ├── architecture.md
+│   └── demo_scenario.md
+├── requirements.txt
+├── Dockerfile
+├── docker-compose.yml
+├── Makefile
+└── README.md
 ```
 
-See [docs/architecture.md](docs/architecture.md) for the full architecture and [docs/api_overview.md](docs/api_overview.md) for endpoint groups.
+## Быстрый старт
 
-## Quick Start Locally
-
-Create a virtual environment:
+Создайте и активируйте виртуальное окружение:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 ```
 
-Install dependencies:
+Установите зависимости:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Run the backend:
+Запустите backend:
 
 ```bash
 uvicorn backend.app.main:app --reload
 ```
 
-Run the frontend in another terminal:
+В другом терминале запустите frontend:
 
 ```bash
 streamlit run frontend/app.py
 ```
 
-Local URLs:
+Локальные адреса:
 
-- FastAPI: http://localhost:8000
-- FastAPI docs: http://localhost:8000/docs
-- Streamlit UI: http://localhost:8501
+- FastAPI: `http://localhost:8000`
+- FastAPI docs: `http://localhost:8000/docs`
+- Streamlit UI: `http://localhost:8501`
 
-## Run With Docker
+Те же команды доступны через `Makefile`:
 
-Create a local environment file:
+```bash
+make install
+make run-backend
+make run-frontend
+```
+
+## Запуск через Docker
+
+Создайте локальный файл окружения:
 
 ```bash
 cp .env.example .env
 ```
 
-Build and start the services:
+Соберите и запустите сервисы:
 
 ```bash
 docker compose build
 docker compose up
 ```
 
-Docker URLs:
+Или через `Makefile`:
 
-- FastAPI: http://localhost:8000
-- FastAPI docs: http://localhost:8000/docs
-- Streamlit UI: http://localhost:8501
+```bash
+make docker-build
+make docker-up
+```
 
-The `data/` directory is mounted into the containers, so uploaded files, processed text, reports, and RAG indexes persist on the host. The Docker image includes `ffmpeg` for video audio extraction.
+Docker-адреса:
 
-## Demo
+- FastAPI: `http://localhost:8000`
+- FastAPI docs: `http://localhost:8000/docs`
+- Streamlit UI: `http://localhost:8501`
 
-Use the included original sample lecture:
+Папка `data/` монтируется в контейнеры, поэтому загруженные файлы, обработанные тексты, отчёты и RAG-индексы сохраняются на хосте. Docker-образ устанавливает `ffmpeg`, необходимый для извлечения аудио из видео.
+
+Остановка Docker Compose:
+
+```bash
+docker compose down
+```
+
+Или:
+
+```bash
+make docker-down
+```
+
+## Демо
+
+В репозитории есть пример учебного материала:
 
 ```text
 sample_data/ml_lecture_sample.txt
 ```
 
-Manual demo steps are in [docs/demo_scenario.md](docs/demo_scenario.md).
+Ручной сценарий демонстрации описан в [docs/demo_scenario.md](docs/demo_scenario.md).
 
-You can also run a smoke demo against an already running backend:
+Также можно запустить smoke demo против уже работающего backend:
 
 ```bash
 python scripts/smoke_demo.py
 ```
 
-The script uploads the sample lecture, processes it, generates reports/topics/terms, builds a RAG index, asks a question, and downloads a Markdown report.
+Скрипт загружает пример, запускает обработку, генерирует отчёты, темы и термины, строит RAG-индекс, задаёт вопрос и скачивает Markdown-отчёт.
 
-## Environment Variables
+## Переменные окружения
 
-Copy `.env.example` to `.env` for local configuration. Important variables:
-
-- `BACKEND_URL`: Streamlit backend URL. Use `http://localhost:8000` locally; Docker Compose sets `http://backend:8000` for the frontend container.
-- `OPENROUTER_API_KEY`: Optional API key for real LLM generation. If empty, deterministic fallback responses are used.
-- `OPENROUTER_BASE_URL`: OpenRouter-compatible API base URL.
-- `LLM_MODEL`: Chat model name.
-- `STT_MODEL_SIZE`, `STT_DEVICE`, `STT_COMPUTE_TYPE`: faster-whisper settings.
-- `STT_USE_FAKE_TRANSCRIBER`: Set `true` for deterministic local/test audio transcription without model downloads.
-- `YOUTUBE_USE_FAKE_TRANSCRIPT`: Set `true` for deterministic local/test YouTube transcripts without internet.
-- `YOUTUBE_LANGUAGES`: Preferred YouTube transcript languages, for example `ru,en`.
-
-First real `faster-whisper` transcription may take time because the model can download and load on first use. YouTube processing uses only available transcripts/subtitles and does not download YouTube video or audio.
-
-## Testing
+Скопируйте `.env.example` в `.env` и настройте значения при необходимости:
 
 ```bash
-pytest
+cp .env.example .env
 ```
 
-The tests are designed to run without OpenRouter API access, real Whisper model downloads, real YouTube access, GPU, or ffmpeg-dependent video fixtures.
+Основные переменные:
 
-## Limitations
+- `BACKEND_URL` - адрес backend для Streamlit. Локально используется `http://localhost:8000`, в Docker Compose frontend получает `http://backend:8000`.
+- `OPENROUTER_API_KEY` - опциональный ключ для реальной LLM-генерации. Если ключ не указан, используются детерминированные fallback-ответы для разработки и тестов.
+- `OPENROUTER_BASE_URL` - базовый URL OpenRouter-compatible API.
+- `LLM_MODEL` - имя chat-модели.
+- `STT_MODEL_SIZE`, `STT_DEVICE`, `STT_COMPUTE_TYPE` - настройки `faster-whisper`.
+- `STT_USE_FAKE_TRANSCRIBER` - режим тестовой транскрибации без загрузки модели.
+- `YOUTUBE_USE_FAKE_TRANSCRIPT` - режим тестового YouTube-транскрипта без обращения к внешним сервисам.
+- `YOUTUBE_LANGUAGES` - предпочтительные языки YouTube-транскриптов, например `ru,en`.
 
-- This is a portfolio MVP, not a production-ready multi-user service.
-- Long documents and transcripts use simple truncation in some LLM prompts; map-reduce processing is a future improvement.
-- RAG currently uses local TF-IDF retrieval rather than semantic embeddings.
-- YouTube processing depends on available transcripts/subtitles and does not download video or audio.
-- Real audio/video transcription can take time and may require model downloads on first use.
+Первая реальная транскрибация через `faster-whisper` может занять время из-за загрузки и инициализации модели. Обработка YouTube использует доступные транскрипты/субтитры и не скачивает видео или аудио.
 
-## API Reference
+## API
 
-See [docs/api_overview.md](docs/api_overview.md). FastAPI interactive docs are available at:
+Интерактивная документация FastAPI доступна после запуска backend:
 
 ```text
 http://localhost:8000/docs
 ```
 
-## Project Status
+Ключевые группы маршрутов:
 
-Portfolio MVP.
+- `GET /health` - проверка доступности backend.
+- `POST /materials/upload` - загрузка файла.
+- `POST /materials/youtube` - добавление YouTube-материала по ссылке.
+- `POST /materials/{material_id}/process` - обработка материала.
+- `GET /materials/{material_id}/text` и `GET /materials/{material_id}/segments` - просмотр извлечённого текста и сегментов.
+- `POST /materials/{material_id}/topics/generate` - выделение тем.
+- `POST /materials/{material_id}/terms/generate` - выделение терминов.
+- `POST /materials/{material_id}/rag/build` - построение RAG-индекса.
+- `POST /materials/{material_id}/ask` - вопрос по материалу.
+- `POST /materials/{material_id}/reports/short` - краткий отчёт.
+- `POST /materials/{material_id}/reports/full-clean` - полный очищенный конспект.
+- `GET /materials/{material_id}/download/md` - скачивание Markdown.
+- `GET /materials/{material_id}/download/pdf` - скачивание PDF.
+- `GET /materials/{material_id}/download/docx` - скачивание DOCX.
 
-Future improvements:
+Подробный список групп API есть в [docs/api_overview.md](docs/api_overview.md).
 
-- Embeddings plus ChromaDB or FAISS instead of TF-IDF
-- Async background tasks for long media processing
-- Better long-document map-reduce summarization
-- Authentication and user accounts
-- Richer frontend for multi-material workflows
-- More robust Markdown rendering and report layout controls
+## Тесты
+
+```bash
+pytest
+```
+
+Или:
+
+```bash
+make test
+```
+
+Тесты рассчитаны на запуск без OpenRouter API, реальной загрузки Whisper-модели, доступа к YouTube, GPU и видеофикстур, завязанных на `ffmpeg`.
+
+## Ограничения
+
+- Проект является портфолио-MVP, а не готовым многопользовательским продакшен-сервисом.
+- Генерация отчётов, тем, терминов и LLM-ответов использует внешний LLM только при настроенном `OPENROUTER_API_KEY`; без ключа включаются резервные ответы для локальной разработки и тестов.
+- Для длинных документов часть prompt-ов использует усечение текста; map-reduce обработка пока не реализована.
+- RAG использует локальный TF-IDF retriever, а не embedding-модель и не векторную базу уровня ChromaDB/FAISS.
+- YouTube-обработка зависит от доступности транскриптов/субтитров у конкретного видео.
+- Реальная обработка аудио/видео может занимать время и требует установленного `ffmpeg`.
+
+## Статус проекта
+
+Портфолио-MVP. Основной backend-пайплайн, Streamlit-интерфейс, экспорт отчётов, тесты и Docker-запуск реализованы.
